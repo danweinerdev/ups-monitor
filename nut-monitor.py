@@ -224,6 +224,12 @@ def Main(args):
         verify_ssl=config['influx']['verify'],
         database=config['influx']['database'])
 
+    logger.info('Successfully connected to InfluxDB: %s://%s:%d/%s',
+        'https' if config['influx']['ssl'] else 'http',
+        config['influx']['server'],
+        config['influx']['port'],
+        config['influx']['database'])
+
     # Execute the process for each configured UPS
 
     try:
