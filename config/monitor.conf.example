@@ -1,0 +1,39 @@
+; InfluxDB configuration.
+; The required fields are the URL and the database field. If influx
+; does not require authentication then nothing is required for those
+; fields.
+[influx]
+server = 127.0.0.1
+port = 8086
+ssl = True
+verify = True
+database = nut-monitor
+ups = ups1
+
+; UPS Configuration
+; Each section corresponds to a single UPS which should be queried.
+; tags for the influx message can be specified in a key=value format
+
+[ups1]
+fields = nut-drivers nut-input nut-output nut-battery nut-ups
+tags = ups=ups1
+
+; Field configuration
+; Each section corresponds to a set of fields which should be allowed.
+; This uses ismple text matching and configured fields if they exist
+; will be included in the final message that is sent.
+
+[nut-battery]
+fields = battery.charge battery.charge.low battery.charge.warning battery.runtime battery.runtime.low battery.voltage battery.voltage.nominal
+
+[nut-drivers]
+fields = driver.parameter.product
+
+[nut-input]
+fields = input.transfer.high input.transfer.low input.voltage input.voltage.nominal
+
+[nut-output]
+fields = output.voltage
+
+[nut-ups]
+fields = ups.beeper.status ups.load ups.model ups.status
