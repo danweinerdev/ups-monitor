@@ -4,9 +4,17 @@ import argparse
 from ConfigParser import ConfigParser
 from datetime import datetime
 from influxdb import InfluxDBClient
+import logging
+from logging import StreamHandler
+from logging.handlers import TimedRotatingFileHandler
 import os
+import signal
 import subprocess
 import sys
+import time
+import threading
+
+logger = logging.getLogger('nut.monitor')
 
 
 class NutMonitorError(Exception):
@@ -14,6 +22,7 @@ class NutMonitorError(Exception):
 
     def __init__(self, message=None):
         self.message = message or self.message
+
 
 class ConfigError(NutMonitorError):
     message = 'A configuration error occurred'
@@ -37,6 +46,14 @@ def ConvertValue(value):
         if ConvertBoolean(value.strip()) is None:
             return value.strip()
         return ConvertBoolean(value.strip())
+
+
+def DropDescriptors():
+    for fd in range(1, 3):
+        try:
+            os.close(fd)
+        except (IOError, OSError):
+            pass
 
 
 def Execute(command, workingDirectory=None):
@@ -125,7 +142,7 @@ def ProcessUps(influx, ups, config):
     result, output = Execute(['upsc', ups])
 
     if result != 0:
-        print('upsc called returned: %d' % result)
+        logger.error('upsc called returned: %d', result)
         return False
 
     timeStamp = TimeStamp()
@@ -143,16 +160,51 @@ def ProcessUps(influx, ups, config):
             'tags': config['tags'],
             'time': timeStamp,
             'fields': {'value': ConvertValue(value.strip())}})
+
+    start = time.time()
     influx.write_points(points, time_precision='ms')
+    stop = time.time()
+
+    logger.debug("Uploaded '%d' metrics in %dms",
+        len(points), stop - start)
     return True
+
+
+def SetupLogging(args):
+    if args.logfile is not None:
+        handler = TimedRotatingFileHandler(
+            args.logfile,
+            backupCount=3,
+            when='midnight')
+    else:
+        handler = StreamHandler(stream=sys.stdout)
+    root = logging.getLogger()
+    root.setLevel(logging.DEBUG)
+    handler.setLevel(logging.DEBUG)
+    root.addHandler(handler)
 
 
 def TimeStamp(now=datetime.utcnow()):
     return now.strftime('%Y-%m-%dT%H:%M:%SZ')
 
+
 def Main(args):
+    event = threading.Event()
+    interval = (args.interval > 0)
+    SetupLogging(args)
+
+    if interval:
+        def ShutdownHandler(sig, sigframe):
+            logger.info('Signal received: %d', sig)
+            if sig in [signal.SIGINT, signal.SIGTERM]:
+                event.set()
+
+        signal.signal(signal.SIGINT, ShutdownHandler)
+        signal.signal(signal.SIGTERM, ShutdownHandler)
+        DropDescriptors()
+
     if not os.path.isfile(args.config):
-        print('Config file not found: %s' % args.config)
+        logger.error('Config file not found: %s', args.config)
         return False
 
     # Load the configuration
@@ -160,7 +212,7 @@ def Main(args):
     try:
         config = LoadConfiguration(args.config)
     except ConfigError as e:
-        print(e.message)
+        logger.error(e.message)
         return False
 
     # Start the InfluxDB client
@@ -173,11 +225,16 @@ def Main(args):
         database=config['influx']['database'])
 
     # Execute the process for each configured UPS
+
     try:
-        for ups, configuration in config['ups'].items():
-            if not ProcessUps(influx, ups, configuration):
-                print('Failed to execute for UPS: %s' % ups)
-                return False
+        while True:
+            for ups, configuration in config['ups'].items():
+                if not ProcessUps(influx, ups, configuration):
+                    logger.error('Failed to execute for UPS: %s', ups)
+                    return False
+            if event.is_set():
+                break
+            time.sleep(interval)
     finally:
         try:
             influx.close()
@@ -191,6 +248,11 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser('nut-monitor')
     parser.add_argument('--config', '-c', required=True,
         help='Path to the config file')
+
+    parser.add_argument('--interval', '-i', default=0, required=False,
+        help='Poll interval between checking for changes (in seconds).')
+    parser.add_argument('--log-file', '-l', dest='logfile', required=False,
+        help='Path to the log file.')
 
     args = parser.parse_args()
     if not Main(args):
