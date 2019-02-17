@@ -241,7 +241,9 @@ def Main(args):
                     return False
             if event.is_set():
                 break
-            time.sleep(interval)
+
+            # TODO Update this sleep to a select-notify
+            time.sleep(float(args.interval))
     finally:
         try:
             influx.close()
