@@ -39,6 +39,30 @@ def ConvertValue(value):
         return ConvertBoolean(value.strip())
 
 
+def Execute(command, workingDirectory=None):
+    try:
+        with open('/dev/null', 'wb') as devnull:
+            process = subprocess.Popen(command,
+                cwd=workingDirectory,
+                stdout=subprocess.PIPE,
+                stderr=devnull,
+                bufsize=1)
+
+            output = []
+            while True:
+                if process.poll() is not None:
+                    break
+                for line in iter(process.stdout.readline, b''):
+                    if len(line.strip()) > 0:
+                        output.append(line.strip())
+    except KeyboardInterrupt:
+        pass
+    except OSError:
+        raise
+
+    return process.poll(), output
+
+
 def LoadConfiguration(configFile):
     parser = ConfigParser()
     with open(configFile, 'rb') as handle:
@@ -94,30 +118,6 @@ def LoadConfiguration(configFile):
                 raise ConfigError('No fields specified for field set: %s' % field)
             config['ups'][value]['fields'].extend(sectionFields.split())
     return config
-
-
-def Execute(command, workingDirectory=None):
-    try:
-        with open('/dev/null', 'wb') as devnull:
-            process = subprocess.Popen(command,
-                cwd=workingDirectory,
-                stdout=subprocess.PIPE,
-                stderr=devnull,
-                bufsize=1)
-
-            output = []
-            while True:
-                if process.poll() is not None:
-                    break
-                for line in iter(process.stdout.readline, b''):
-                    if len(line.strip()) > 0:
-                        output.append(line.strip())
-    except KeyboardInterrupt:
-        pass
-    except OSError:
-        raise
-
-    return process.poll(), output
 
 
 def ProcessUps(influx, ups, config):
