@@ -183,7 +183,8 @@ def SetupLogging(args):
     logger.setLevel(logging.DEBUG)
 
 
-def TimeStamp(now=datetime.utcnow()):
+def TimeStamp(now=None):
+    now = now or datetime.utcnow()
     return now.strftime('%Y-%m-%dT%H:%M:%SZ')
 
 
