@@ -142,9 +142,7 @@ def ProcessUps(influx, ups, config):
             'measurement': key.replace('.', '_'),
             'tags': config['tags'],
             'time': timeStamp,
-            'fields': {'value': ConvertValue(value.strip())}
-        })
-
+            'fields': {'value': ConvertValue(value.strip())}})
     influx.write_points(points, time_precision='ms')
     return True
 
