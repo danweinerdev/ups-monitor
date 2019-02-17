@@ -201,7 +201,8 @@ def Main(args):
 
         signal.signal(signal.SIGINT, ShutdownHandler)
         signal.signal(signal.SIGTERM, ShutdownHandler)
-        DropDescriptors()
+        if args.logfile is not None:
+            DropDescriptors()
 
     if not os.path.isfile(args.config):
         logger.error('Config file not found: %s', args.config)
