@@ -178,10 +178,9 @@ def SetupLogging(args):
             when='midnight')
     else:
         handler = StreamHandler(stream=sys.stdout)
-    root = logging.getLogger()
-    root.setLevel(logging.DEBUG)
     handler.setLevel(logging.DEBUG)
-    root.addHandler(handler)
+    logger.addHandler(handler)
+    logger.setLevel(logging.DEBUG)
 
 
 def TimeStamp(now=datetime.utcnow()):
