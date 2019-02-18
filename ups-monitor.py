@@ -45,6 +45,8 @@ def ConvertValue(value, hint=None):
     try:
         if hint is not None:
             if hint == 'int':
+                if '.' in value:
+                    return int(float(value))
                 return int(value)
             if hint == 'float':
                 return float(value)
@@ -181,16 +183,16 @@ def ProcessUps(influx, ups, config):
         if key not in fields:
             continue
         try:
-            value = ConvertValue(value.strip(), hint=fields[key])
+            conversion = ConvertValue(value.strip(), hint=fields[key])
         except ConversionFailure:
             logger.warning("Failed to convert field '%s' to value: %s (Hint: %s)",
-                key, value, fields[key])
+                key, value.strip(), fields[key])
             continue
         points.append({
             'measurement': key.replace('.', '_'),
             'tags': config['tags'],
             'time': timeStamp,
-            'fields': {'value': value}})
+            'fields': {'value': conversion}})
 
     start = time.time()
     influx.write_points(points, time_precision='ms')
@@ -271,6 +273,8 @@ def Main(args):
                     logger.error('Failed to execute for UPS: %s', ups)
                     return False
             if event.is_set():
+                break
+            if not args.interval:
                 break
 
             # TODO Update this sleep to a select-notify
