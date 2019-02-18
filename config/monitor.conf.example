@@ -24,16 +24,16 @@ tags = ups=ups1
 ; will be included in the final message that is sent.
 
 [nut-battery]
-fields = battery.charge battery.charge.low battery.charge.warning battery.runtime battery.runtime.low battery.voltage battery.voltage.nominal
+fields = battery.charge:int battery.charge.low:int battery.charge.warning:int battery.runtime:int battery.runtime.low:int battery.voltage:float battery.voltage.nominal:int
 
 [nut-drivers]
-fields = driver.parameter.product
+fields = driver.parameter.product:string
 
 [nut-input]
-fields = input.transfer.high input.transfer.low input.voltage input.voltage.nominal
+fields = input.transfer.high:int input.transfer.low:int input.voltage:float input.voltage.nominal:float
 
 [nut-output]
-fields = output.voltage
+fields = output.voltage:float
 
 [nut-ups]
-fields = ups.beeper.status ups.load ups.model ups.status
+fields = ups.beeper.status:string ups.load:int ups.model:string ups.status:string
