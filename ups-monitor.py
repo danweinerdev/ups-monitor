@@ -28,6 +28,10 @@ class ConfigError(NutMonitorError):
     message = 'A configuration error occurred'
 
 
+class ConversionFailure(NutMonitorError):
+    message = 'Invalid type conversion requested'
+
+
 def ConvertBoolean(value):
     if value.lower() in ['yes', '1', 'true']:
         return True
@@ -36,16 +40,29 @@ def ConvertBoolean(value):
     return None
 
 
-def ConvertValue(value):
+def ConvertValue(value, hint=None):
+    value = value.strip()
     try:
-        v = float(value.strip())
-        if '.' in value:
-            return v
-        return int(v)
+        if hint is not None:
+            if hint == 'int':
+                return int(value)
+            if hint == 'float':
+                return float(value)
+            if hint == 'string':
+                return value
+            raise ConversionFailure
+        else:
+            v = float(value)
+            if '.' in value:
+                return v
+            return int(v)
     except (TypeError, ValueError):
-        if ConvertBoolean(value.strip()) is None:
-            return value.strip()
-        return ConvertBoolean(value.strip())
+        if hint is not None:
+            raise ConversionFailure('Failed to convert the given value to the requested type')
+        else:
+            if ConvertBoolean(value) is None:
+                return value
+            return ConvertBoolean(value)
 
 
 def DropDescriptors():
@@ -117,7 +134,7 @@ def LoadConfiguration(configFile):
         fields = parser.get(value, 'fields', '')
         tags = parser.get(value, 'tags', '')
 
-        config['ups'][value] = {'tags': {}, 'fields': []}
+        config['ups'][value] = {'tags': {}, 'fields': {}}
         for tag in tags.split():
             try:
                 k, v = tag.split('=')
@@ -133,7 +150,15 @@ def LoadConfiguration(configFile):
             sectionFields = parser.get(field, 'fields', '')
             if len(sectionFields) == 0:
                 raise ConfigError('No fields specified for field set: %s' % field)
-            config['ups'][value]['fields'].extend(sectionFields.split())
+            for name in sectionFields.split():
+                try:
+                    name, _type = name.split(':')
+                except (TypeError, ValueError):
+                    _type = None
+                if _type not in [None, 'int', 'float', 'string']:
+                    raise ConfigError("Invalid type conversion to field: %s:%s" % (
+                        value, name))
+                config['ups'][value]['fields'][name] = _type
     return config
 
 
@@ -155,11 +180,17 @@ def ProcessUps(influx, ups, config):
             continue
         if key not in fields:
             continue
+        try:
+            value = ConvertValue(value.strip(), hint=fields[key])
+        except ConversionFailure:
+            logger.warning("Failed to convert field '%s' to value: %s (Hint: %s)",
+                key, value, fields[key])
+            continue
         points.append({
             'measurement': key.replace('.', '_'),
             'tags': config['tags'],
             'time': timeStamp,
-            'fields': {'value': ConvertValue(value.strip())}})
+            'fields': {'value': value}})
 
     start = time.time()
     influx.write_points(points, time_precision='ms')
