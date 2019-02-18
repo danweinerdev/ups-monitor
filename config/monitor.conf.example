@@ -30,7 +30,7 @@ fields = battery.charge:int battery.charge.low:int battery.charge.warning:int ba
 fields = driver.parameter.product:string
 
 [nut-input]
-fields = input.transfer.high:int input.transfer.low:int input.voltage:float input.voltage.nominal:float
+fields = input.transfer.high:int input.transfer.low:int input.voltage:float input.voltage.nominal:int
 
 [nut-output]
 fields = output.voltage:float
