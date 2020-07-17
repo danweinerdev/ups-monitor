@@ -1,14 +1,18 @@
+; Global fields
+[global]
+ups = ups1
+database = influxdb
+
 ; InfluxDB configuration.
 ; The required fields are the URL and the database field. If influx
 ; does not require authentication then nothing is required for those
 ; fields.
-[influx]
+[influxdb]
 server = 127.0.0.1
 port = 8086
 ssl = True
 verify = True
 database = nut-monitor
-ups = ups1
 
 ; UPS Configuration
 ; Each section corresponds to a single UPS which should be queried.
@@ -17,23 +21,36 @@ ups = ups1
 [ups1]
 fields = nut-drivers nut-input nut-output nut-battery nut-ups
 tags = ups=ups1
+command = .venv/bin/python test/upsc.py --random
 
 ; Field configuration
 ; Each section corresponds to a set of fields which should be allowed.
-; This uses ismple text matching and configured fields if they exist
+; This uses simple text matching and configured fields if they exist
 ; will be included in the final message that is sent.
 
 [nut-battery]
-fields = battery.charge:int battery.charge.low:int battery.charge.warning:int battery.runtime:int battery.runtime.low:int battery.voltage:float battery.voltage.nominal:int
+battery.charge = int
+battery.charge.low = int
+battery.charge.warning = int
+battery.runtime = int
+battery.runtime.low = int
+battery.voltage = float
+battery.voltage.nominal = int
 
 [nut-drivers]
-fields = driver.parameter.product:string
+driver.parameter.product = string
 
 [nut-input]
-fields = input.transfer.high:int input.transfer.low:int input.voltage:float input.voltage.nominal:int
+input.transfer.high = int
+input.transfer.low = int
+input.voltage = float
+input.voltage.nominal = int
 
 [nut-output]
-fields = output.voltage:float
+output.voltage = float
 
 [nut-ups]
-fields = ups.beeper.status:string ups.load:int ups.model:string ups.status:string
+ups.beeper.status = string
+ups.load = int
+ups.model = string
+ups.status = string
