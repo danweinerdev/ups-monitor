@@ -1,6 +1,6 @@
 certifi==2023.7.22
 chardet==3.0.4
-idna==2.10
+idna==3.7
 influxdb==5.3.1
 msgpack==1.0.0
 PyMonitorLib==0.1.1
